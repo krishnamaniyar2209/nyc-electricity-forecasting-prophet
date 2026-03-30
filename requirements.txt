@@ -1,0 +1,14 @@
+# Core
+pandas>=1.5.0
+numpy>=1.23.0
+matplotlib>=3.6.0
+
+# Forecasting
+prophet>=1.1.0
+
+# Evaluation
+scikit-learn>=1.1.0
+
+# Notebook
+jupyter>=1.0.0
+ipykernel>=6.0.0
