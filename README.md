@@ -8,7 +8,7 @@
 ![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
 ![University](https://img.shields.io/badge/Pace%20University-CS675-blue)
 
-> A comprehensive time series forecasting project using **Facebook's Prophet** model to predict NYC electricity consumption across all five boroughs — built for CS675: Introduction to Data Science at Pace University.
+> A comprehensive time series forecasting project using **Facebook's Prophet** model to predict NYC electricity consumption across all five boroughs — originally built for CS675: Introduction to Data Science at Pace University, and refreshed with NYC Open Data through October 2025.
 
 ---
 
@@ -31,7 +31,7 @@
 
 ## 🗽 Overview
 
-This project forecasts **New York City's daily, monthly, and yearly electricity consumption** using Facebook Prophet's additive time series model. The dataset spans from **2009 to September 2025** and covers all five NYC boroughs: Brooklyn, Manhattan, Bronx, Queens, and Staten Island.
+This project forecasts **New York City's daily, monthly, and yearly electricity consumption** using Facebook Prophet's additive time series model. The dataset spans from **December 2009 to October 2025** and covers all five NYC boroughs: Brooklyn, Manhattan, Bronx, Queens, and Staten Island.
 
 The notebook covers:
 - ✅ Automatic time-unit detection (daily / monthly / yearly)
@@ -50,12 +50,14 @@ The notebook covers:
 |---|---|
 | Rows | ~553,000 |
 | Columns | 27 |
-| Date Range | December 2009 – September 2025 |
+| Date Range | December 2009 – October 2025 |
 | Boroughs | Brooklyn, Manhattan, Bronx, Queens, Staten Island |
 | Target Variable | `Consumption (KWH)` |
 | Granularity | Billing records (expanded to daily) |
 
-The raw dataset contains billing records per meter. Each record is expanded into true daily consumption by dividing total KWH by billing period length, then re-aggregated to produce clean daily, monthly, and yearly time series.
+The raw dataset contains billing records per meter. Each record is expanded into daily consumption by dividing total KWH by the billing-period length, then re-aggregated to produce clean daily, monthly, and yearly time series.
+
+> ⚠️ **Note:** Daily values are *interpolated* from billing periods (KWH ÷ days), so within-period variation is smoothed rather than observed at true daily resolution.
 
 ---
 
@@ -126,6 +128,8 @@ def detect_frequency(df):
 
 ## 📈 Models & Results
 
+![Daily Forecast — Tuned Model](images/daily-forecast-tuned.png)
+
 ### Daily Dataset
 
 | Model | MAE (KWH) | R² |
@@ -154,7 +158,7 @@ def detect_frequency(df):
 | Flat Growth | 577,090 | 32.33% | -0.000 |
 | Changepoint Tuned | 592,473 | 31.93% | 0.040 |
 
-> Low R² on yearly data is expected — only 17 data points with high inter-year variance (COVID dip in 2018/2019, spikes in 2020).
+> Low R² on yearly data is expected — only 17 yearly data points with high inter-year variance (COVID-related dip and subsequent spikes).
 
 ---
 
@@ -241,10 +245,11 @@ file_path = "/your/path/to/electric_consumption.csv"
 
 ## 👤 Author
 
-**Krishna Maniyar**
-- 🎓 Pace University — Seidenberg School of CSIS
-- 📘 CS675: Introduction to Data Science (Fall 2024)
-- 🔗 [GitHub](https://github.com/krishnamaniyar2209)
+**Krishna Maniyar** — Data Analyst
+- 🎓 Pace University — Seidenberg School of CSIS, MS in Data Science
+- 📘 Originally built for CS675: Introduction to Data Science; refreshed with NYC Open Data through October 2025
+- 📧 krishnamaniyarkm22@gmail.com
+- 🔗 [GitHub](https://github.com/krishnamaniyar2209) · [LinkedIn](https://www.linkedin.com/in/krishnamaniyar/) · [Portfolio](https://krishnamaniyar2209.github.io/)
 
 ---
 
