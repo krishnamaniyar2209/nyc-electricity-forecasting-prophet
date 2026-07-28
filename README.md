@@ -4,11 +4,10 @@
 ![Prophet](https://img.shields.io/badge/Facebook%20Prophet-Time%20Series-orange)
 ![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-Metrics-red?logo=scikit-learn)
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange?logo=jupyter)
-![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
 ![University](https://img.shields.io/badge/Pace%20University-CS675-blue)
 
-> A comprehensive time series forecasting project using **Facebook's Prophet** model to predict NYC electricity consumption across all five boroughs — originally built for CS675: Introduction to Data Science at Pace University, and refreshed with NYC Open Data through October 2025.
+> A time series forecasting project using **Facebook's Prophet** model to predict NYC electricity consumption across all five boroughs. Originally built for CS675: Introduction to Data Science at Pace University, and refreshed with NYC Open Data through October 2025.
 
 ---
 
@@ -16,22 +15,24 @@
 
 - [Overview](#-overview)
 - [Dataset](#-dataset)
+- [Data Pipeline](#-data-pipeline)
 - [Project Structure](#-project-structure)
 - [Methodology](#-methodology)
+- [Evaluation Approach](#-evaluation-approach)
 - [Models & Results](#-models--results)
 - [Borough-Level Forecasting](#-borough-level-forecasting)
+- [Limitations & Next Steps](#-limitations--next-steps)
 - [Installation](#-installation)
 - [Usage](#-usage)
 - [Key Findings](#-key-findings)
 - [Technologies Used](#-technologies-used)
 - [Author](#-author)
-- [License](#-license)
 
 ---
 
 ## 🗽 Overview
 
-This project forecasts **New York City's daily, monthly, and yearly electricity consumption** using Facebook Prophet's additive time series model. The dataset spans from **December 2009 to October 2025** and covers all five NYC boroughs: Brooklyn, Manhattan, Bronx, Queens, and Staten Island.
+This project forecasts **New York City's daily, monthly, and yearly electricity consumption** using Facebook Prophet's additive time series model. The dataset spans **December 2009 to October 2025** and covers all five NYC boroughs: Brooklyn, Manhattan, Bronx, Queens, and Staten Island.
 
 The notebook covers:
 - ✅ Automatic time-unit detection (daily / monthly / yearly)
@@ -44,20 +45,34 @@ The notebook covers:
 
 ## 📊 Dataset
 
-**Source:** [NYC Open Data — Electric Consumption and Cost (2010–2025)](https://data.cityofnewyork.us/Housing-Development/Electric-Consumption-And-Cost-2010-Feb2023-/jr24-e7cr/about_data)
+**Source:** [NYC Open Data, Electric Consumption and Cost](https://data.cityofnewyork.us/Housing-Development/Electric-Consumption-And-Cost-2010-Feb2023-/jr24-e7cr/about_data)
 
 | Property | Details |
 |---|---|
-| Rows | ~553,000 |
+| Rows | 553,666 |
 | Columns | 27 |
-| Date Range | December 2009 – October 2025 |
+| Date Range | 2009-12-17 to 2025-10-13 |
 | Boroughs | Brooklyn, Manhattan, Bronx, Queens, Staten Island |
 | Target Variable | `Consumption (KWH)` |
 | Granularity | Billing records (expanded to daily) |
 
-The raw dataset contains billing records per meter. Each record is expanded into daily consumption by dividing total KWH by the billing-period length, then re-aggregated to produce clean daily, monthly, and yearly time series.
+The raw dataset contains billing records per meter, each covering a variable-length service period.
 
-> ⚠️ **Note:** Daily values are *interpolated* from billing periods (KWH ÷ days), so within-period variation is smoothed rather than observed at true daily resolution.
+---
+
+## 🔄 Data Pipeline
+
+| Stage | Records | Operation |
+|---|---|---|
+| Raw billing records | 553,666 | As published by NYC Open Data |
+| After cleaning | 362,215 | Removed zero-consumption and negative-day rows |
+| After borough filter | 357,684 | Restricted to the 5 valid NYC boroughs |
+| **Expanded to daily** | **10,860,703** | Each billing row split into one record per day (`KWH / days`) |
+| Aggregated series | 5,095 daily · 191 monthly · 17 yearly | Summed by date, then resampled |
+
+Borough distribution of the cleaned billing records: Brooklyn 140,819 · Manhattan 93,128 · Bronx 83,216 · Queens 37,526 · Staten Island 2,995.
+
+> ⚠️ **Important:** Daily values are *interpolated*, not observed. Every day within a billing period is assigned the same `KWH ÷ days` value, so the daily series is considerably smoother than true daily meter reads would be. This inflates goodness-of-fit statistics on the daily dataset. See [Limitations](#-limitations--next-steps).
 
 ---
 
@@ -74,15 +89,15 @@ nyc-electricity-forecasting-prophet/
 
 ## 🔬 Methodology
 
-### Step 1 — Data Preprocessing
+### Step 1: Data Preprocessing
 - Parsed billing records with variable-length service periods
 - Removed invalid rows (zero consumption, negative days)
 - Filtered to 5 valid NYC boroughs only
 - Expanded each billing row into individual daily records (`KWH / days`)
-- Aggregated to daily totals, then resampled to monthly and yearly means
+- Aggregated to daily totals, then resampled to monthly and yearly series
 
-### Step 2 — Time-Unit Auto Detection
-A `detect_frequency()` function automatically identifies the time granularity of any input dataset by measuring the median gap between consecutive dates:
+### Step 2: Time-Unit Auto Detection
+A `detect_frequency()` function identifies the granularity of any input dataset by measuring the median gap between consecutive dates:
 ```python
 def detect_frequency(df):
     df_sorted = df.sort_values("ds")
@@ -99,7 +114,7 @@ def detect_frequency(df):
         return "unknown"
 ```
 
-### Step 3 — Forecasting Horizons
+### Step 3: Forecasting Horizons
 
 | Dataset | Forecast Horizons |
 |---|---|
@@ -107,7 +122,7 @@ def detect_frequency(df):
 | Monthly | 1 month, 6 months, 9 months |
 | Yearly | 1 year, 10 years, 20 years |
 
-### Step 4 — Model Tuning
+### Step 4: Model Tuning
 
 | Parameter | Values Tested |
 |---|---|
@@ -117,18 +132,33 @@ def detect_frequency(df):
 | n_changepoints | 5, 10, 15, 25, 30 |
 | changepoint_prior_scale | 0.1, 0.3, 0.5 |
 
-### Step 5 — Evaluation Metrics
-- **MAE** — Mean Absolute Error
-- **MAPE** — Mean Absolute Percentage Error
-- **R²** — Coefficient of Determination (via scikit-learn)
+---
 
-> ⚠️ **Note on MAPE:** Daily and monthly MAPE values are artificially inflated due to near-zero consumption records from early 2009–2010 billing data. MAE and R² are the primary evaluation metrics for those datasets.
+## 📐 Evaluation Approach
+
+**All metrics reported below are in-sample.** Each model is fitted on the full history, and predictions are then compared against the same historical dates used for fitting:
+
+```python
+model.fit(daily_agg)
+forecast = model.predict(future)
+merged = daily_agg.merge(forecast[["ds", "yhat"]], on="ds", how="inner")
+evaluate_model(merged["y"], merged["yhat"], ...)
+```
+
+The inner join retains only dates the model was trained on, so the reported R² and MAE measure **how well each model fits observed history, not how accurately it forecasts unseen data**. Results should be read as fit quality and as a relative comparison between configurations, not as forecast accuracy.
+
+This matters most for the tuning results. The tuned daily configuration raises flexibility on three axes at once (Fourier order 10, 30 changepoints, changepoint prior scale 0.5), and a more flexible model fits its training data better almost by construction. Without a holdout, the improvement from R² 0.631 to 0.722 cannot be separated from overfitting. Adding `Prophet.cross_validation()` is the first item in [Next Steps](#-limitations--next-steps).
+
+### Metrics
+- **MAE**, Mean Absolute Error, primary metric
+- **R²**, Coefficient of Determination via scikit-learn
+- **MAPE**, reported but **not usable on this dataset**. Near-zero consumption values in the early 2010 billing records drive percentage errors into the thousands. See the borough table below.
 
 ---
 
 ## 📈 Models & Results
 
-![Daily Forecast — Tuned Model](images/daily-forecast-tuned.png)
+*All figures are in-sample fit metrics. See [Evaluation Approach](#-evaluation-approach).*
 
 ### Daily Dataset
 
@@ -147,7 +177,9 @@ def detect_frequency(df):
 | Linear Growth | 313,946 | 0.486 |
 | Logistic Growth | 314,493 | 0.479 |
 | Flat Growth | 343,453 | 0.460 |
-| **Custom Seasonality (tuned)** | **322,904** | **0.517** ✅ |
+| **Custom Seasonality (tuned)** | 322,904 | **0.517** ✅ |
+
+Note that on the monthly series, tuning improves R² but *worsens* MAE, so no configuration dominates.
 
 ### Yearly Dataset
 
@@ -158,27 +190,40 @@ def detect_frequency(df):
 | Flat Growth | 577,090 | 32.33% | -0.000 |
 | Changepoint Tuned | 592,473 | 31.93% | 0.040 |
 
-> Low R² on yearly data is expected — only 17 yearly data points with high inter-year variance (COVID-related dip and subsequent spikes).
+> Near-zero and negative R² on yearly data is expected. There are only 17 annual observations, 2009 covers just two weeks of December, and 2011 shows an anomalous drop (1.20M vs. 3.43M in 2010) that likely reflects incomplete reporting rather than a real consumption collapse.
 
 ---
 
 ## 🗺️ Borough-Level Forecasting
 
-Independent Prophet models trained and evaluated for each of the 5 NYC boroughs (365-day forecast):
+Independent Prophet models trained per borough using the tuned daily configuration (365-day forecast horizon):
 
-| Borough | Daily Records | MAE (KWH) | R² |
-|---|---|---|---|
-| Brooklyn | 5,027 | 83,628 | 0.670 |
-| Manhattan | 5,080 | 91,102 | 0.700 |
-| **Bronx** | 5,028 | **66,002** | **0.737** ✅ |
-| Queens | 5,078 | 30,511 | 0.696 |
-| Staten Island | 5,027 | 9,488 | 0.717 |
+| Borough | Daily Records | MAE (KWH) | R² | MAPE |
+|---|---|---|---|---|
+| Brooklyn | 5,027 | 83,628 | 0.670 | 6,995% |
+| Manhattan | 5,080 | 91,102 | 0.700 | 362,780% |
+| **Bronx** | 5,028 | **66,002** | **0.737** ✅ | 26,506% |
+| Queens | 5,078 | 30,511 | 0.696 | 11,657% |
+| Staten Island | 5,027 | 9,488 | 0.717 | 4,833% |
+
+The MAPE column is included for transparency and should be disregarded. Those values are an artifact of near-zero denominators in early billing records, not a reflection of model quality. MAE and R² are the meaningful comparisons.
 
 **Key observations:**
 - 🏆 **Bronx** achieves the highest R² at 0.7367
-- 🎯 **Staten Island** has the lowest MAE, consistent with its smaller size
+- 🎯 **Staten Island** has the lowest MAE, consistent with its smaller footprint
 - 📈 **Brooklyn** has the highest absolute consumption overall
-- ☀️ All 5 boroughs show clear **summer consumption peaks** (July–August)
+- ☀️ All 5 boroughs show clear **summer consumption peaks** (July to August)
+
+---
+
+## ⚠️ Limitations & Next Steps
+
+1. **No holdout validation.** Every metric in this README is in-sample. The immediate next step is `Prophet.cross_validation()` with a rolling origin, which would produce genuine out-of-sample forecast error. Expect the reported figures to fall.
+2. **The tuning gain is unverified.** The daily improvement from R² 0.631 to 0.722 comes from raising model flexibility, which improves training fit by construction. It cannot be called a generalization gain until cross-validated.
+3. **Daily values are interpolated.** Constant `KWH ÷ days` within each billing period produces an artificially smooth series, which inflates daily fit statistics relative to what true daily meter data would yield.
+4. **MAPE is unusable.** Near-zero consumption in early records makes percentage error meaningless. A symmetric alternative such as sMAPE, or simply excluding the 2009 to 2010 period, would give a usable percentage metric.
+5. **Yearly series is too short.** 17 observations, one of them a two-week partial year, cannot support a meaningful trend model. The 10 and 20 year forecasts are illustrative only.
+6. **Coverage is not all of NYC.** The source data covers NYC Housing Authority developments and related facilities, not citywide residential and commercial consumption. Results describe that portfolio, not the city as a whole.
 
 ---
 
@@ -220,12 +265,12 @@ file_path = "/your/path/to/electric_consumption.csv"
 
 ## 💡 Key Findings
 
-- **Linear growth** consistently outperforms logistic and flat for both daily and monthly datasets
-- **Custom seasonality tuning** (yearly fourier_order=10, weekly fourier_order=5, n_changepoints=30) improved daily R² from 0.63 → **0.72**
-- The yearly dataset is inherently difficult to model with only 17 observations — wide confidence intervals are expected and normal
-- Prophet's additive model captures **NYC's strong summer electricity spikes** effectively across all boroughs
-- **Borough-level models** outperform the city-wide aggregate in precision, confirming that localized consumption patterns exist
-- **Data quality matters** — early billing records with near-zero values affect MAPE; always check your target distribution before forecasting
+- **Linear growth** consistently outperforms logistic and flat on both the daily and monthly series
+- **Custom seasonality tuning** (yearly `fourier_order=10`, weekly `fourier_order=5`, `n_changepoints=30`) improved in-sample daily R² from 0.631 to **0.722** and cut MAE by 12%, from 289K to 254K KWH
+- **Borough-level models** achieve substantially lower absolute error than the citywide aggregate, confirming that localized consumption patterns exist
+- Prophet's additive model captures **NYC's strong summer electricity spikes** across all five boroughs
+- The yearly series is inherently unmodellable at 17 observations, and wide confidence intervals are the correct output rather than a failure
+- **Data quality dominates model choice here.** Interpolated daily values, near-zero early records, and a partial first year shaped the results more than any hyperparameter did
 
 ---
 
@@ -234,28 +279,22 @@ file_path = "/your/path/to/electric_consumption.csv"
 | Tool | Version | Purpose |
 |---|---|---|
 | [Python](https://python.org) | 3.10+ | Core language |
-| [Facebook Prophet](https://facebook.github.io/prophet/) | Latest | Time series forecasting |
-| [pandas](https://pandas.pydata.org/) | Latest | Data manipulation |
-| [NumPy](https://numpy.org/) | Latest | Numerical operations |
-| [Matplotlib](https://matplotlib.org/) | Latest | Visualization |
-| [scikit-learn](https://scikit-learn.org/) | Latest | MAE, MAPE, R² metrics |
+| [Facebook Prophet](https://facebook.github.io/prophet/) | 1.1+ | Time series forecasting |
+| [pandas](https://pandas.pydata.org/) | 1.5+ | Data manipulation |
+| [NumPy](https://numpy.org/) | 1.23+ | Numerical operations |
+| [Matplotlib](https://matplotlib.org/) | 3.6+ | Visualization |
+| [scikit-learn](https://scikit-learn.org/) | 1.1+ | MAE, MAPE, R² metrics |
 | [Jupyter Notebook](https://jupyter.org/) | Latest | Development environment |
 
 ---
 
 ## 👤 Author
 
-**Krishna Maniyar** — Data Analyst
-- 🎓 Pace University — Seidenberg School of CSIS, MS in Data Science
+**Krishna Maniyar**, Data Analyst
+- 🎓 Pace University, Seidenberg School of CSIS, MS in Data Science
 - 📘 Originally built for CS675: Introduction to Data Science; refreshed with NYC Open Data through October 2025
 - 📧 krishnamaniyarkm22@gmail.com
 - 🔗 [GitHub](https://github.com/krishnamaniyar2209) · [LinkedIn](https://www.linkedin.com/in/krishnamaniyar/) · [Portfolio](https://krishnamaniyar2209.github.io/)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 
