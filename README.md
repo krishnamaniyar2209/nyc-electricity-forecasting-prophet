@@ -14,18 +14,20 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [Highlights](#-highlights)
+- [Demo](#-demo)
 - [Dataset](#-dataset)
 - [Data Pipeline](#-data-pipeline)
 - [Project Structure](#-project-structure)
 - [Methodology](#-methodology)
 - [Evaluation Approach](#-evaluation-approach)
 - [Models & Results](#-models--results)
-- [Borough-Level Forecasting](#-borough-level-forecasting)
+- [Borough-Level Forecasting](#️-borough-level-forecasting)
 - [Limitations & Next Steps](#-limitations--next-steps)
-- [Installation](#-installation)
+- [Installation](#️-installation)
 - [Usage](#-usage)
 - [Key Findings](#-key-findings)
-- [Technologies Used](#-technologies-used)
+- [Technologies Used](#️-technologies-used)
 - [Author](#-author)
 
 ---
@@ -40,6 +42,25 @@ The notebook covers:
 - ✅ Hyperparameter tuning via custom seasonality and trend changepoints
 - ✅ Model evaluation using **MAE**, **MAPE**, and **R²**
 - ✅ Independent borough-level forecasting (extra credit)
+
+---
+
+## ✨ Highlights
+
+- Processed **553,666 raw billing records into a 10.86-million-row daily series**, then aggregated it three ways (daily, monthly, yearly) — real large-scale data engineering, not just a call to `Prophet.fit()`.
+- Was rigorous about a distinction most forecasting write-ups blur: every metric in this README is explicitly labeled as **in-sample fit, not forecast accuracy**, with a dedicated section explaining why that matters and what a true holdout evaluation would require.
+- Correctly refused to overclaim a positive-looking result: borough-level R² values bracket the citywide model's score, and rather than concluding "borough models are better," the README states plainly that this project does **not** demonstrate that — a comparison that would actually prove it is described but left as future work.
+- Diagnosed why MAPE is meaningless on this dataset (near-zero consumption in the earliest billing records sends percentage error into the hundreds of thousands of a percent) instead of quietly reporting a broken metric.
+
+---
+
+## 🎥 Demo
+
+*The daily forecast plot (historical data with the Prophet confidence band) and the five-borough comparison are the strongest visuals here — either would work well as a preview image for this repo.*
+
+```
+![NYC electricity forecast with confidence interval](docs/results_preview.png)
+```
 
 ---
 
